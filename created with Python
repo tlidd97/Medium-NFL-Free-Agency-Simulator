@@ -1,0 +1,134 @@
+import random
+
+class Player:
+    def __init__(self, name, position, overall_rating, age, min_salary=None, max_salary=None):
+        self.name = name
+        self.position = position
+        self.overall_rating = overall_rating
+        self.age = age
+        self.salary = None
+        self.contract_years = None
+        self.signed = False  # Flag to track if player has already signed #
+        self.min_salary = min_salary  # Minimum salary constraint for the player #
+
+    def set_contract(self, salary, years):
+        self.salary = salary
+        self.contract_years = years
+        self.signed = True  # Player has signed with a team #
+
+    def decline_offer(self, team, offered_salary):
+        print(f"{self.name} declines the offer from {team.name} for ${offered_salary}M per year.")
+
+class Team:
+    def __init__(self, name, salary_cap=100, max_players=2, position_needs=None):
+        self.name = name
+        self.salary_cap = salary_cap
+        self.roster = []
+        self.max_players = max_players  # Maximum number of players team can sign #
+        self.players_signed = 0  # Counter for number of players signed by the team #
+        self.positions_signed = set()  # Set to track positions of players already signed #
+        self.position_needs = position_needs if position_needs is not None else set()  # Set to track team's position needs #
+
+    def make_offer(self, player, salary, years):
+        if not player.signed and self.players_signed < self.max_players \
+                and player.position in self.position_needs \
+                and player.position not in self.positions_signed:  # Check if player has not signed, team has not reached max players, team has need for player's position, and team does not already have a player in that position #
+            if player.min_salary is not None:  # Check if player has a minimum salary constraint #
+                salary = max(player.min_salary, salary)  # Offer maximum of random salary and minimum salary constraint #
+            if salary * years <= self.salary_cap:
+                player.set_contract(salary, years)
+                self.roster.append(player)
+                self.players_signed += 1  # Increment player counter for the team #
+                self.positions_signed.add(player.position)  # Add position to set of signed positions #
+                print(f"{self.name} signs {player.name} to a {years}-year contract worth ${salary}M per year")
+            else:
+                print(f"{self.name} cannot afford to sign {player.name}")
+
+def make_offers_user_first(team_acting_as_human, players):
+    while True:
+        # Display available players for the human team to choose from #
+        available_players = [player for player in players if not player.signed]  # Filter out already signed players #
+        if not available_players:
+            print("No more available players to sign.")
+            break  # Exit the loop if there are no more players left to sign #
+
+        chosen_player_name = input("Enter the name of the player you want to sign (or 'done' to stop): ")
+        if chosen_player_name.lower() == 'done':
+            break  # Exit the loop if user wants to stop signing players #
+
+        chosen_player = next((player for player in available_players if player.name == chosen_player_name), None)
+        if not chosen_player:
+            print("Player not found. Please enter a valid player name.")
+            continue
+
+        # Let the user decide contract length (years) and salary (in millions) #
+        years = int(input("Enter the number of years for the contract: "))
+        salary = float(input("Enter the salary amount in millions: "))
+
+        # Make an offer to the chosen player #
+        if chosen_player.min_salary and salary < chosen_player.min_salary:
+            chosen_player.decline_offer(team_acting_as_human, salary)
+            continue # Offer declined, so let the user choose another player
+        else:
+            team_acting_as_human.make_offer(chosen_player, salary, years)
+
+    # Display the final roster of the human team #
+    print(f"\nFinal roster of {team_acting_as_human.name}:")
+    for player in team_acting_as_human.roster:
+        print(f"{player.name} ({player.position}) - {player.contract_years}-year contract worth ${player.salary}M per year")
+
+    # Simulate the rest of free agency for the remaining unsigned players #
+    for player in players:
+        if not player.signed:
+            for team in teams:
+                if not player.signed:
+                    team.make_offer(player, random.randint(5, 20), random.randint(1, 5))
+
+# Actual team names and their position needs #
+team_data = {
+    "New England Patriots": {"position_needs": {"WR", "QB"}, "salary_cap": 69},  # New England Patriots need Wide Receivers and a Quarterback with a salary cap of 69 million #
+    "Los Angeles Rams": {"position_needs": {"QB", "DT", "LB"}, "salary_cap": 29},
+    "Dallas Cowboys": {"position_needs": {"DE", "DT", "CB"}, "salary_cap": 45},
+    "Kansas City Chiefs": {"position_needs": {"RB", "DT", "LB", "S"}, "salary_cap": 25},
+    "San Francisco 49ers": {"position_needs": {"WR", "TE", "LB"}, "salary_cap": 7},
+    "Seattle Seahawks": {"position_needs": {"QB", "RB", "DE", "LB"}, "salary_cap": 45},
+    "Tampa Bay Buccaneers": {"position_needs": {"QB", "RB", "WR", "DE"}, "salary_cap": 11},
+    "Green Bay Packers": {"position_needs": {"QB", "WR", "DT", "LB"}, "salary_cap": 33},
+    "Baltimore Ravens": {"position_needs": {"TE", "DT", "CB"}, "salary_cap": 6},
+    "Pittsburgh Steelers": {"position_needs": {"WR", "TE", "S"}, "salary_cap": 14}
+}
+
+# Actual player names and their positions
+player_data = {
+    "Tom Brady": ("QB", 20),  # Minimum salary constraint of $20M per year for Tom Brady # 
+    "Aaron Donald": ("DE", 25),
+    "Bobby Wagner": ("LB", 15), 
+    "Lane Johnson": ("OT",15),
+    "Derrick Henry": ("RB", 6),
+    "DeAndre Hopkins": ("WR", 10),
+    "Travis Kelce": ("TE", 11),
+    "Chris Jones": ("DT", 20),
+    "Jalen Ramsey": ("CB", 12),
+    "Tyrann Mathieu": ("S", 4)
+}
+
+# Shuffle team names #
+team_names = list(team_data.keys())
+random.shuffle(team_names)
+
+# Create teams #
+teams = [Team(name, max_players=2, **team_data[name]) for name in team_names]  # Set maximum players each team can sign to 2
+
+# Create players #
+players = [Player(name, position, random.randint(80, 99), random.randint(21, 35), min_salary=min_salary)
+           for name, (position, min_salary) in player_data.items()]
+
+# Let the user choose a team to act as #
+team_name = input("Enter the name of the team you want to act as: ")
+team_acting_as_human = next((team for team in teams if team.name == team_name), None)
+if not team_acting_as_human:
+    print("Team not found. Please enter a valid team name.")
+else:
+    # Make offers with the chosen team #
+    make_offers_user_first(team_acting_as_human, players)
+
